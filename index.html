@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Monitor ESP32</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+<body>
+    <h1>Temperatura del CPU ESP32:</h1>
+    <div id="lectura" style="font-size: 50px;">Cargando...</div>
+
+    <script>
+        // Configuración de tu proyecto Firebase
+        const firebaseConfig = {
+            databaseURL: "https://tu-proyecto.firebaseio.com/"
+        };
+        firebase.initializeApp(firebaseConfig);
+
+        // Leer el dato en tiempo real
+        const tempRef = firebase.database().ref('temperatura');
+        tempRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            document.getElementById('lectura').innerText = data + " °C";
+        });
+    </script>
+</body>
+</html>
