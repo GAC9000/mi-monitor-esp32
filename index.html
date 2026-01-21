@@ -1,38 +1,28 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Monitor ESP32 - GAC</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #1a1a2e; color: white; padding-top: 100px; }
-        .card { background: #16213e; padding: 40px; border-radius: 20px; display: inline-block; border: 2px solid #0f3460; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        #temp { font-size: 80px; color: #e94560; font-weight: bold; margin: 20px 0; }
-        .status { color: #00d2ff; font-family: monospace; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <h2>TEMPERATURA CPU</h2>
-        <div id="temp">-- °C</div>
-        <div class="status" id="status">CONECTANDO A FIREBASE...</div>
-    </div>
+<div class="card">
+    <h2>CPU TEMP - DISPOSITIVO 1</h2>
+    <div id="temp1" class="temp-val">-- °C</div>
+    <div class="status" id="status1">ESPERANDO...</div>
+</div>
 
-    <script>
-        const firebaseConfig = { databaseURL: "https://monitor-gac-default-rtdb.firebaseio.com/" };
-        firebase.initializeApp(firebaseConfig);
+<div class="card">
+    <h2>CPU TEMP - DISPOSITIVO 2</h2>
+    <div id="temp2" class="temp-val">-- °C</div>
+    <div class="status" id="status2">ESPERANDO...</div>
+</div>
 
-        const tempRef = firebase.database().ref('temperatura');
-        tempRef.on('value', (snapshot) => {
-            const val = snapshot.val();
-            if(val !== null) {
-                document.getElementById('temp').innerText = parseFloat(val).toFixed(1) + " °C";
-                document.getElementById('status').innerText = "RECIBIENDO DATOS EN VIVO";
-            } else {
-                document.getElementById('status').innerText = "ESPERANDO DATOS DEL ESP32...";
-            }
-        });
-    </script>
-</body>
-</html>
+<script>
+    const firebaseConfig = { databaseURL: "https://monitor-gac-default-rtdb.firebaseio.com/" };
+    firebase.initializeApp(firebaseConfig);
+
+    // Escuchar ESP32 #1
+    firebase.database().ref('temperatura').on('value', (snapshot) => {
+        document.getElementById('temp1').innerText = snapshot.val() + " °C";
+        document.getElementById('status1').innerText = "VIVO";
+    });
+
+    // Escuchar ESP32 #2
+    firebase.database().ref('temperatura2').on('value', (snapshot) => {
+        document.getElementById('temp2').innerText = snapshot.val() + " °C";
+        document.getElementById('status2').innerText = "VIVO";
+    });
+</script>
