@@ -1,28 +1,141 @@
-<div class="card">
-    <h2>CPU TEMP - DISPOSITIVO 1</h2>
-    <div id="temp1" class="temp-val">-- °C</div>
-    <div class="status" id="status1">ESPERANDO...</div>
-</div>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GAC - Monitor IoT Global</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
-<div class="card">
-    <h2>CPU TEMP - DISPOSITIVO 2</h2>
-    <div id="temp2" class="temp-val">-- °C</div>
-    <div class="status" id="status2">ESPERANDO...</div>
-</div>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent-color: #38bdf8;
+            --temp-color: #f43f5e;
+            --text-main: #f8fafc;
+        }
 
-<script>
-    const firebaseConfig = { databaseURL: "https://monitor-gac-default-rtdb.firebaseio.com/" };
-    firebase.initializeApp(firebaseConfig);
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
 
-    // Escuchar ESP32 #1
-    firebase.database().ref('temperatura').on('value', (snapshot) => {
-        document.getElementById('temp1').innerText = snapshot.val() + " °C";
-        document.getElementById('status1').innerText = "VIVO";
-    });
+        h1 {
+            margin-bottom: 40px;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+        }
 
-    // Escuchar ESP32 #2
-    firebase.database().ref('temperatura2').on('value', (snapshot) => {
-        document.getElementById('temp2').innerText = snapshot.val() + " °C";
-        document.getElementById('status2').innerText = "VIVO";
-    });
-</script>
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 25px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 30px;
+            width: 280px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h2 {
+            font-size: 1.1rem;
+            color: #94a3b8;
+            margin-bottom: 15px;
+        }
+
+        .temp-display {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: var(--temp-color);
+            margin: 15px 0;
+        }
+
+        .status-badge {
+            background: rgba(0,0,0,0.2);
+            padding: 6px 12px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-family: monospace;
+            color: #64748b;
+        }
+
+        .online {
+            color: #22c55e !important;
+            border: 1px solid #22c55e;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Monitor de Microprocesadores GAC</h1>
+
+    <div class="container">
+        <div class="card">
+            <h2>ESP32 - DISPOSITIVO 1</h2>
+            <div id="temp1" class="temp-display">-- °C</div>
+            <span id="status1" class="status-badge">ESPERANDO...</span>
+        </div>
+
+        <div class="card">
+            <h2>ESP32 - DISPOSITIVO 2</h2>
+            <div id="temp2" class="temp-display">-- °C</div>
+            <span id="status2" class="status-badge">ESPERANDO...</span>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURACIÓN DE TU PROYECTO
+        const firebaseConfig = { 
+            databaseURL: "https://monitor-gac-default-rtdb.firebaseio.com/" 
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // FUNCIÓN PARA ACTUALIZAR TARJETAS
+        function updateUI(id, tempId, statusId, value) {
+            const tempElement = document.getElementById(tempId);
+            const statusElement = document.getElementById(statusId);
+            
+            if (value !== null) {
+                tempElement.innerText = parseFloat(value).toFixed(1) + " °C";
+                statusElement.innerText = "● EN LÍNEA";
+                statusElement.classList.add("online");
+            }
+        }
+
+        // ESCUCHAR "temperatura" (ESP32 #1)
+        db.ref('temperatura').on('value', (snapshot) => {
+            updateUI(1, 'temp1', 'status1', snapshot.val());
+        });
+
+        // ESCUCHAR "temperatura2" (ESP32 #2)
+        db.ref('temperatura2').on('value', (snapshot) => {
+            updateUI(2, 'temp2', 'status2', snapshot.val());
+        });
+    </script>
+</body>
+</html>
