@@ -7,135 +7,124 @@
     
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --accent-color: #38bdf8;
-            --temp-color: #f43f5e;
-            --text-main: #f8fafc;
+        :root { --bg-color: #0f172a; --card-bg: #1e293b; --accent: #38bdf8; --temp1: #f43f5e; --temp2: #10b981; }
+        body { font-family: sans-serif; background: var(--bg-color); color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .container { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; width: 100%; max-width: 900px; margin-bottom: 20px; }
+        .card { background: var(--card-bg); border-radius: 15px; padding: 20px; width: 250px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
+        .temp-val { font-size: 3rem; font-weight: bold; margin: 10px 0; }
+        #temp1 { color: var(--temp1); }
+        #temp2 { color: var(--temp2); }
+        .chart-container { background: var(--card-bg); border-radius: 15px; padding: 20px; width: 100%; max-width: 900px; height: 350px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+        
+        .btn-download {
+            background: var(--accent);
+            color: var(--bg-color);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.3s;
         }
-
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        h1 {
-            margin-bottom: 40px;
-            color: var(--accent-color);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
-        }
-
-        .container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 25px;
-            width: 100%;
-            max-width: 1000px;
-        }
-
-        .card {
-            background: var(--card-bg);
-            border-radius: 20px;
-            padding: 30px;
-            width: 280px;
-            text-align: center;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.05);
-            transition: transform 0.3s ease;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-        }
-
-        .card h2 {
-            font-size: 1.1rem;
-            color: #94a3b8;
-            margin-bottom: 15px;
-        }
-
-        .temp-display {
-            font-size: 3.5rem;
-            font-weight: 800;
-            color: var(--temp-color);
-            margin: 15px 0;
-        }
-
-        .status-badge {
-            background: rgba(0,0,0,0.2);
-            padding: 6px 12px;
-            border-radius: 50px;
-            font-size: 0.8rem;
-            font-family: monospace;
-            color: #64748b;
-        }
-
-        .online {
-            color: #22c55e !important;
-            border: 1px solid #22c55e;
-        }
+        .btn-download:hover { opacity: 0.8; }
     </style>
 </head>
 <body>
 
-    <h1>Monitor de Microprocesadores GAC</h1>
+    <h1 style="color: var(--accent)">Monitor Tiempo Real GAC</h1>
 
     <div class="container">
         <div class="card">
-            <h2>ESP32 - DISPOSITIVO 1</h2>
-            <div id="temp1" class="temp-display">-- °C</div>
-            <span id="status1" class="status-badge">ESPERANDO...</span>
+            <h2 style="font-size: 1rem">DISPOSITIVO 1</h2>
+            <div id="temp1" class="temp-val">-- °C</div>
         </div>
-
         <div class="card">
-            <h2>ESP32 - DISPOSITIVO 2</h2>
-            <div id="temp2" class="temp-display">-- °C</div>
-            <span id="status2" class="status-badge">ESPERANDO...</span>
+            <h2 style="font-size: 1rem">DISPOSITIVO 2</h2>
+            <div id="temp2" class="temp-val">-- °C</div>
         </div>
     </div>
 
+    <div class="chart-container">
+        <canvas id="historyChart"></canvas>
+    </div>
+
+    <button class="btn-download" onclick="descargarCSV()">DESCARGAR HISTORIAL (CSV)</button>
+
     <script>
-        // CONFIGURACIÓN DE TU PROYECTO
-        const firebaseConfig = { 
-            databaseURL: "https://monitor-gac-default-rtdb.firebaseio.com/" 
-        };
+        const firebaseConfig = { databaseURL: "https://monitor-gac-default-rtdb.firebaseio.com/" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // FUNCIÓN PARA ACTUALIZAR TARJETAS
-        function updateUI(id, tempId, statusId, value) {
-            const tempElement = document.getElementById(tempId);
-            const statusElement = document.getElementById(statusId);
-            
-            if (value !== null) {
-                tempElement.innerText = parseFloat(value).toFixed(1) + " °C";
-                statusElement.innerText = "● EN LÍNEA";
-                statusElement.classList.add("online");
+        // Almacén de datos para la descarga
+        let logDeDatos = [["Hora", "Temp Disp 1 (°C)", "Temp Disp 2 (°C)"]];
+
+        const ctx = document.getElementById('historyChart').getContext('2d');
+        const historyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'Disp. 1', borderColor: '#f43f5e', data: [], tension: 0.4 },
+                    { label: 'Disp. 2', borderColor: '#10b981', data: [], tension: 0.4 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white' } },
+                    x: { ticks: { color: 'white' } }
+                },
+                plugins: { legend: { labels: { color: 'white' } } }
             }
+        });
+
+        function addData(index, value) {
+            const now = new Date().toLocaleTimeString();
+            
+            if(index === 0) {
+                historyChart.data.labels.push(now);
+                // Guardar en el log para descargar (rellenamos con el último valor conocido del otro sensor)
+                let lastT2 = historyChart.data.datasets[1].data.slice(-1)[0] || 0;
+                logDeDatos.push([now, value, lastT2]);
+            }
+            
+            historyChart.data.datasets[index].data.push(value);
+
+            if (historyChart.data.labels.length > 30) {
+                historyChart.data.labels.shift();
+                historyChart.data.datasets[0].data.shift();
+                historyChart.data.datasets[1].data.shift();
+            }
+            historyChart.update();
         }
 
-        // ESCUCHAR "temperatura" (ESP32 #1)
-        db.ref('temperatura').on('value', (snapshot) => {
-            updateUI(1, 'temp1', 'status1', snapshot.val());
+        db.ref('temperatura').on('value', (s) => {
+            const v = s.val();
+            if(v){ document.getElementById('temp1').innerText = v.toFixed(1) + " °C"; addData(0, v); }
         });
 
-        // ESCUCHAR "temperatura2" (ESP32 #2)
-        db.ref('temperatura2').on('value', (snapshot) => {
-            updateUI(2, 'temp2', 'status2', snapshot.val());
+        db.ref('temperatura2').on('value', (s) => {
+            const v = s.val();
+            if(v){ document.getElementById('temp2').innerText = v.toFixed(1) + " °C"; addData(1, v); }
         });
+
+        // FUNCIÓN DE DESCARGA
+        function descargarCSV() {
+            let csvContent = "data:text/csv;charset=utf-8," 
+                + logDeDatos.map(e => e.join(",")).join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "historial_temperaturas_GAC.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     </script>
 </body>
 </html>
